@@ -48,6 +48,27 @@
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; }
   .msg.ok { background:#e7f6ec; color:#14532d; } .msg.err { background:#fdecea; color:#7a1b12; }
   .empty { padding:28px; text-align:center; color:var(--mut); }
+  /* telephone : chaque article devient une fiche, plus de tableau a faire defiler */
+  @media (max-width: 820px) {
+    header { padding:10px 12px; gap:8px; } h1 { font-size:16px; } .meta { width:100%; order:3; }
+    main { padding:12px 10px 150px; }
+    .tabs { gap:4px; } .tab { padding:6px 10px; font-size:13px; }
+    .tools input, .tools select { flex:1 1 100%; } .tools .btn { flex:1; }
+    table, tbody, tr, td { display:block; width:100%; }
+    table { border:0; background:transparent; }
+    tr.head { display:none; }
+    tr { background:var(--card); border:1px solid var(--line); border-radius:12px; margin-bottom:10px; padding:8px 0; position:relative; }
+    td { border:0 !important; padding:5px 12px; text-align:left !important; white-space:normal !important; }
+    td[data-label]::before { content:attr(data-label); display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:2px; }
+    td.pick { position:absolute; top:8px; right:4px; width:auto; }
+    td.pick input { width:26px; height:26px; }
+    td.title { padding-right:52px; font-size:15px; }
+    td.inline { display:inline-block; width:auto; vertical-align:top; }
+    input.price { width:130px; font-size:16px; padding:9px 10px; }
+    .btn.small { padding:7px 10px; font-size:13px; }
+    .bar { padding:10px 12px; flex-wrap:wrap; gap:6px; }
+    .bar .spacer { display:none; } .bar .btn.primary { width:100%; padding:12px; font-size:16px; }
+  }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -201,7 +222,7 @@
     var list = $('list'); list.textContent = '';
     var rows = visible();
     if (!rows.length) { list.appendChild(el('div', 'empty', 'Ingen varer på denne liste.')); updateBar(); return; }
-    var table = el('table'), head = el('tr');
+    var table = el('table'), head = el('tr', 'head');
     ['', 'Vores vare', 'Vores pris', 'Hos konkurrenterne', 'Ny pris', 'Forskel'].forEach(function (h, i) {
       head.appendChild(el('th', i === 2 || i >= 4 ? 'num' : null, h));
     });
@@ -213,22 +234,22 @@
 
   function row(a) {
     var tr = el('tr');
-    var td = el('td'), cb = el('input'); cb.type = 'checkbox';
+    var td = el('td', 'pick'), cb = el('input'); cb.type = 'checkbox';
     cb.checked = Boolean(chosen[a.handle]); cb.disabled = !selectable(a);
     cb.onchange = function () { if (cb.checked) chosen[a.handle] = true; else delete chosen[a.handle]; updateBar(); };
     td.appendChild(cb); tr.appendChild(td);
 
-    td = el('td'); td.appendChild(link(a.lien, a.titre));
+    td = el('td', 'title'); td.appendChild(link(a.lien, a.titre));
     if (a.en_promo) td.appendChild(el('span', 'chip promo', 'på tilbud'));
     td.appendChild(el('div', 'sub', a.marque));
     tr.appendChild(td);
 
-    td = el('td', 'num', kr(a.prix));
+    td = el('td', 'num', kr(a.prix)); td.dataset.label = 'Vores pris';
     if (a.prix !== a.prix_max) td.appendChild(el('div', 'sub', 'op til ' + kr(a.prix_max)));
     if (a.en_promo) td.appendChild(el('div', 'sub', 'vises til ' + kr(a.prix_actuel)));
     tr.appendChild(td);
 
-    td = el('td');
+    td = el('td'); td.dataset.label = 'Hos konkurrenterne';
     a.offres.forEach(function (o) {
       var key = a.handle + '|' + o.concurrent + '|' + o.handle;
       var box = el('div', 'offer' + (verdicts[key] === 'refus' ? ' refused' : ''));
@@ -266,16 +287,16 @@
     });
     tr.appendChild(td);
 
-    td = el('td', 'num');
+    td = el('td', 'num inline'); td.dataset.label = 'Ny pris';
     var inp = el('input', 'price'); inp.type = 'text'; inp.inputMode = 'decimal';
     inp.value = prices[a.handle] || '';
-    var gap = el('td', 'num');
+    var gap = el('td', 'num inline'); gap.dataset.label = 'Forskel';
     function refresh() {
-      var p = parsePrice(inp.value); gap.textContent = ''; gap.className = 'num';
+      var p = parsePrice(inp.value); gap.textContent = ''; gap.className = 'num inline';
       if (p !== null && a.prix) {
         var pct = (p - a.prix) / a.prix * 100;
         gap.textContent = (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + ' %';
-        gap.className = 'num ' + (pct < 0 ? 'down' : (pct > 0 ? 'up' : ''));
+        gap.className = 'num inline ' + (pct < 0 ? 'down' : (pct > 0 ? 'up' : ''));
       }
       cb.disabled = !selectable(a);
       if (cb.disabled && chosen[a.handle]) { delete chosen[a.handle]; cb.checked = false; }
