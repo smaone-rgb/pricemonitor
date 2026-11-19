@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Konkurrentpriser - godkendelse</title>
+<style>
+  :root { --ink:#16181d; --mut:#667085; --line:#e4e7ec; --bg:#f6f7f9; --card:#fff; --acc:#1f6feb; --down:#c0392b; --up:#1a7f4b; --warn:#b54708; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:14px 20px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:18px; margin:0; }
+  .meta { color:var(--mut); font-size:13px; }
+  .spacer { flex:1; }
+  button, select, input { font:inherit; }
+  .btn { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:7px 12px; cursor:pointer; }
+  .btn:hover { border-color:#b9c0cc; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  .btn.primary:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.small { padding:3px 8px; font-size:12px; border-radius:6px; }
+  .btn.on-ok { background:#e7f6ec; border-color:#9ad3ae; color:var(--up); }
+  .btn.on-no { background:#fdecea; border-color:#f0a8a0; color:var(--down); }
+  main { padding:16px 20px 96px; max-width:1400px; margin:0 auto; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .panel input[type=text], .panel input[type=password] { width:100%; max-width:520px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .tab { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:6px 14px; cursor:pointer; }
+  .tab.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .tools { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .tools input, .tools select { padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th.num { text-align:right; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); background:#fafbfc; }
+  tr:last-child td { border-bottom:0; }
+  td.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  a { color:var(--acc); text-decoration:none; } a:hover { text-decoration:underline; }
+  .sub { color:var(--mut); font-size:12px; }
+  .chip { display:inline-block; font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--mut); margin-left:6px; }
+  .chip.sur, .chip.valide { color:var(--up); border-color:#9ad3ae; background:#e7f6ec; }
+  .chip.a_verifier { color:var(--warn); border-color:#f3c98b; background:#fff4e5; }
+  .chip.promo { color:#fff; background:#000; border-color:#000; }
+  .offer { margin-bottom:6px; } .offer:last-child { margin-bottom:0; }
+  .offer.refused { opacity:.45; text-decoration:line-through; }
+  .down { color:var(--down); font-weight:600; } .up { color:var(--up); font-weight:600; }
+  input.price { width:96px; text-align:right; padding:6px 8px; border:1px solid var(--line); border-radius:8px; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:12px 20px; display:flex; gap:14px; align-items:center; box-shadow:0 -4px 16px rgba(0,0,0,.06); }
+  .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; }
+  .msg.ok { background:#e7f6ec; color:#14532d; } .msg.err { background:#fdecea; color:#7a1b12; }
+  .empty { padding:28px; text-align:center; color:var(--mut); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Konkurrentpriser</h1>
+  <span class="meta" id="meta"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="btn-reload">Opdater</button>
+  <button class="btn" id="btn-settings">Indstillinger</button>
+</header>
+<main>
+  <div id="message"></div>
+
+  <div class="panel" id="settings" hidden>
+    <p><strong>Forbindelse</strong></p>
+    <p class="sub">Adgangsnøglen gemmes kun i denne browser. Den bruges til at hente dagens rapport og sende dine beslutninger.</p>
+    <p><label>GitHub-lager<br><input type="text" id="in-repo" placeholder="bruger/lager"></label></p>
+    <p><label>Adgangsnøgle<br><input type="password" id="in-token" autocomplete="off"></label></p>
+    <button class="btn primary" id="btn-save">Gem og hent</button>
+  </div>
+
+  <div id="app" hidden>
+    <div class="tabs" id="tabs"></div>
+    <div class="tools">
+      <input type="search" id="search" placeholder="Søg efter vare">
+      <select id="filter"></select>
+      <button class="btn" id="btn-all">Vælg alle</button>
+      <button class="btn" id="btn-none">Fravælg alle</button>
+    </div>
+    <div id="list"></div>
+  </div>
+</main>
+
+<div class="bar" id="bar" hidden>
+  <strong id="count"></strong>
+  <span class="sub" id="count-sub"></span>
+  <span class="spacer"></span>
+  <button class="btn primary" id="btn-go" disabled>Go: opdater priser</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var DEFAULT_REPO = 'smaone-rgb/shopify-promo';
+  var BRANCH = 'main';
+  var TABS = [
+    ['baisser', 'Sæt ned'], ['augmenter', 'Sæt op'],
+    ['a_verifier', 'Skal tjekkes'], ['egal', 'Samme pris']
+  ];
+  var report = null, tab = 'baisser';
+  var chosen = {};     // handle -> true : prix a appliquer
+  var prices = {};     // handle -> prix saisi (texte)
+  var verdicts = {};   // "handle|concurrent|leurHandle" -> 'ok' | 'refus'
+
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function link(url, text) {
+    var a = el('a', null, text);
+    if (/^https:\/\//.test(url || '')) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; }
+    return a;
+  }
+  function kr(n) {
+    if (n === null || n === undefined || n === '') return '';
+    return Number(n).toLocaleString('da-DK', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' kr';
+  }
+  function parsePrice(s) {
+    var v = Number(String(s).replace(/\s/g, '').replace(',', '.'));
+    return isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : null;
+  }
+  var REASONS = {
+    'titre different': 'anden titel', 'titre generique': 'for generel titel',
+    'plusieurs de nos articles': 'matcher flere af vores varer', 'plusieurs candidats': 'flere mulige varer',
+    'ecart suspect': 'mistænkelig prisforskel', 'prix variables': 'varierende priser'
+  };
+  function reasons(text) {
+    return String(text || '').split(', ').map(function (r) { return REASONS[r] || r; }).join(', ');
+  }
+  function say(kind, text) {
+    var box = $('message'); box.textContent = '';
+    if (text) box.appendChild(el('div', 'msg ' + kind, text));
+  }
+  function api(path, options) {
+    options = options || {};
+    options.headers = Object.assign({
+      'Authorization': 'Bearer ' + store.get('veille-token'),
+      'X-GitHub-Api-Version': '2022-11-28'
+    }, options.headers || {});
+    return fetch('https://api.github.com/repos/' + store.get('veille-repo') + path, options);
+  }
+
+  function load() {
+    if (!store.get('veille-token') || !store.get('veille-repo')) { showSettings(); return; }
+    say('', ''); $('settings').hidden = true;
+    api('/contents/veille/rapport.json?ref=' + BRANCH, { headers: { 'Accept': 'application/vnd.github.raw+json' }, cache: 'no-store' })
+      .then(function (r) {
+        if (r.status === 401) throw new Error('Adgangsnøglen blev afvist. Tjek den under Indstillinger.');
+        if (r.status === 404) throw new Error('Rapporten blev ikke fundet: forkert lager, nøgle uden adgang, eller overvågningen har ikke kørt endnu.');
+        if (!r.ok) throw new Error('GitHub-fejl ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        report = data; chosen = {}; prices = {}; verdicts = {};
+        report.articles.forEach(function (a) { if (a.prix_propose) prices[a.handle] = String(a.prix_propose); });
+        $('meta').textContent = 'Rapport fra ' + report.date + ' · ' + report.concurrents.join(', ');
+        var f = $('filter'); f.textContent = '';
+        f.appendChild(new Option('Alle konkurrenter', ''));
+        report.concurrents.forEach(function (c) { f.appendChild(new Option(c, c)); });
+        $('app').hidden = false; $('bar').hidden = false;
+        render();
+      })
+      .catch(function (e) { $('app').hidden = true; $('bar').hidden = true; say('err', e.message); });
+  }
+  function showSettings() {
+    $('in-repo').value = store.get('veille-repo') || DEFAULT_REPO;
+    $('in-token').value = store.get('veille-token');
+    $('settings').hidden = false;
+  }
+
+  function visible() {
+    var q = $('search').value.trim().toLowerCase(), c = $('filter').value;
+    return report.articles.filter(function (a) {
+      if (a.sens !== tab) return false;
+      if (q && (a.titre + ' ' + a.marque).toLowerCase().indexOf(q) < 0) return false;
+      if (c && !a.offres.some(function (o) { return o.concurrent === c; })) return false;
+      return true;
+    });
+  }
+  function selectable(a) {
+    var p = parsePrice(prices[a.handle]);
+    return a.prix === a.prix_max && p !== null && p !== a.prix && Boolean(a.id);
+  }
+
+  function render() {
+    var tabs = $('tabs'); tabs.textContent = '';
+    TABS.forEach(function (t) {
+      var n = report.articles.filter(function (a) { return a.sens === t[0]; }).length;
+      var b = el('button', 'tab' + (t[0] === tab ? ' active' : ''), t[1] + ' (' + n + ')');
+      b.onclick = function () { tab = t[0]; render(); };
+      tabs.appendChild(b);
+    });
+    var list = $('list'); list.textContent = '';
+    var rows = visible();
+    if (!rows.length) { list.appendChild(el('div', 'empty', 'Ingen varer på denne liste.')); updateBar(); return; }
+    var table = el('table'), head = el('tr');
+    ['', 'Vores vare', 'Vores pris', 'Hos konkurrenterne', 'Ny pris', 'Forskel'].forEach(function (h, i) {
+      head.appendChild(el('th', i === 2 || i >= 4 ? 'num' : null, h));
+    });
+    table.appendChild(head);
+    rows.forEach(function (a) { table.appendChild(row(a)); });
+    list.appendChild(table);
+    updateBar();
+  }
+
+  function row(a) {
+    var tr = el('tr');
+    var td = el('td'), cb = el('input'); cb.type = 'checkbox';
+    cb.checked = Boolean(chosen[a.handle]); cb.disabled = !selectable(a);
+    cb.onchange = function () { if (cb.checked) chosen[a.handle] = true; else delete chosen[a.handle]; updateBar(); };
+    td.appendChild(cb); tr.appendChild(td);
+
+    td = el('td'); td.appendChild(link(a.lien, a.titre));
+    if (a.en_promo) td.appendChild(el('span', 'chip promo', 'på tilbud'));
+    td.appendChild(el('div', 'sub', a.marque));
+    tr.appendChild(td);
+
+    td = el('td', 'num', kr(a.prix));
+    if (a.prix !== a.prix_max) td.appendChild(el('div', 'sub', 'op til ' + kr(a.prix_max)));
+    if (a.en_promo) td.appendChild(el('div', 'sub', 'vises til ' + kr(a.prix_actuel)));
+    tr.appendChild(td);
+
+    td = el('td');
+    a.offres.forEach(function (o) {
+      var key = a.handle + '|' + o.concurrent + '|' + o.handle;
+      var box = el('div', 'offer' + (verdicts[key] === 'refus' ? ' refused' : ''));
+      box.appendChild(el('strong', null, o.concurrent + ' : '));
+      box.appendChild(el('span', o.prix < a.prix ? 'down' : (o.prix > a.prix ? 'up' : ''), kr(o.prix)));
+      if (o.prix_barre && o.prix_barre > o.prix) box.appendChild(el('span', 'sub', '  (før ' + kr(o.prix_barre) + ')'));
+      box.appendChild(el('span', 'chip ' + o.confiance, o.confiance === 'a_verifier' ? 'skal tjekkes' : (o.confiance === 'valide' ? 'godkendt' : 'sikker')));
+      if (!o.en_stock) box.appendChild(el('span', 'chip', 'udsolgt'));
+      var line = el('div', 'sub'); line.appendChild(link(o.lien, o.titre));
+      if (o.raisons) line.appendChild(document.createTextNode(' · ' + reasons(o.raisons)));
+      box.appendChild(line);
+      if (o.confiance !== 'valide') {
+        var acts = el('div');
+        // une correspondance deja sure n'a pas besoin d'etre confirmee : on ne propose que le refus
+        var choices = o.confiance === 'sur' ? [['refus', 'Ikke samme vare', 'on-no']]
+          : [['ok', 'Samme vare', 'on-ok'], ['refus', 'Ikke samme vare', 'on-no']];
+        choices.forEach(function (v) {
+          var b = el('button', 'btn small' + (verdicts[key] === v[0] ? ' ' + v[2] : ''), v[1]);
+          b.style.marginRight = '6px'; b.style.marginTop = '4px';
+          b.onclick = function () {
+            if (verdicts[key] === v[0]) delete verdicts[key]; else verdicts[key] = v[0];
+            // article confirme : on propose un prix a partir de cette offre, si rien n'est saisi
+            if (verdicts[key] === 'ok' && !prices[a.handle] && a.prix === a.prix_max && o.comparable) {
+              var m = Number(report.marge_hausse || 0);
+              if (o.prix < a.prix) prices[a.handle] = String(o.prix);
+              else if (o.prix - m > a.prix) prices[a.handle] = String(o.prix - m);
+            }
+            render();
+          };
+          acts.appendChild(b);
+        });
+        box.appendChild(acts);
+      }
+      td.appendChild(box);
+    });
+    tr.appendChild(td);
+
+    td = el('td', 'num');
+    var inp = el('input', 'price'); inp.type = 'text'; inp.inputMode = 'decimal';
+    inp.value = prices[a.handle] || '';
+    var gap = el('td', 'num');
+    function refresh() {
+      var p = parsePrice(inp.value); gap.textContent = ''; gap.className = 'num';
+      if (p !== null && a.prix) {
+        var pct = (p - a.prix) / a.prix * 100;
+        gap.textContent = (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + ' %';
+        gap.className = 'num ' + (pct < 0 ? 'down' : (pct > 0 ? 'up' : ''));
+      }
+      cb.disabled = !selectable(a);
+      if (cb.disabled && chosen[a.handle]) { delete chosen[a.handle]; cb.checked = false; }
+      updateBar();
+    }
+    inp.oninput = function () { prices[a.handle] = inp.value; refresh(); };
+    td.appendChild(inp);
+    if (a.prix !== a.prix_max) td.appendChild(el('div', 'sub', 'varierende priser: ret manuelt'));
+    tr.appendChild(td); tr.appendChild(gap);
+    refresh();
+    return tr;
+  }
+
+  function updateBar() {
+    if (!report) return;
+    var n = Object.keys(chosen).length, m = Object.keys(verdicts).length;
+    $('count').textContent = n + (n === 1 ? ' pris ændres' : ' priser ændres');
+    $('count-sub').textContent = m ? m + ' match bekræftet eller afvist' : '';
+    $('btn-go').disabled = !(n || m);
+  }
+
+  function csvCell(v) {
+    v = String(v === null || v === undefined ? '' : v);
+    return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function buildCsv() {
+    var lines = [['type', 'product_id', 'handle', 'titre', 'ancien_prix', 'nouveau_prix', 'concurrent', 'leur_handle']];
+    var by = {}; report.articles.forEach(function (a) { by[a.handle] = a; });
+    Object.keys(verdicts).forEach(function (k) {
+      var p = k.split('|'), a = by[p[0]];
+      lines.push([verdicts[k], '', p[0], a ? a.titre : '', '', '', p[1], p.slice(2).join('|')]);
+    });
+    Object.keys(chosen).forEach(function (h) {
+      var a = by[h], p = parsePrice(prices[h]);
+      if (!a || p === null) return;
+      var low = a.offres.slice().sort(function (x, y) { return x.prix - y.prix; })[0] || {};
+      lines.push(['prix', a.id, h, a.titre, a.prix.toFixed(2), p.toFixed(2), low.concurrent || '', low.handle || '']);
+    });
+    return lines.map(function (l) { return l.map(csvCell).join(';'); }).join('\n') + '\n';
+  }
+  function toBase64(text) {
+    var bytes = new TextEncoder().encode(text), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function go() {
+    var n = Object.keys(chosen).length, m = Object.keys(verdicts).length;
+    if (!window.confirm('Bekræft: ' + n + ' pris(er) ændres i butikken, og ' + m + ' match gemmes?')) return;
+    var d = new Date(), pad = function (x) { return (x < 10 ? '0' : '') + x; };
+    var name = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+    $('btn-go').disabled = true;
+    api('/contents/veille/decisions/' + name + '.csv', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+      body: JSON.stringify({ message: 'Decisions prix ' + name + ' (' + n + ' prix, ' + m + ' correspondances)', content: toBase64(buildCsv()), branch: BRANCH })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('GitHub afviste afsendelsen (' + r.status + '). Har nøglen skriveadgang?');
+      chosen = {}; verdicts = {}; render();
+      say('ok', 'Beslutningerne er sendt. Priserne opdateres i butikken inden for et par minutter. Rapporten viser ændringerne efter næste kørsel.');
+      window.scrollTo(0, 0);
+    }).catch(function (e) { say('err', e.message); updateBar(); });
+  }
+
+  $('btn-save').onclick = function () {
+    store.set('veille-repo', $('in-repo').value.trim());
+    store.set('veille-token', $('in-token').value.trim());
+    load();
+  };
+  $('btn-settings').onclick = function () { if ($('settings').hidden) showSettings(); else $('settings').hidden = true; };
+  $('btn-reload').onclick = load;
+  $('search').oninput = function () { if (report) render(); };
+  $('filter').onchange = function () { if (report) render(); };
+  $('btn-all').onclick = function () { visible().forEach(function (a) { if (selectable(a)) chosen[a.handle] = true; }); render(); };
+  $('btn-none').onclick = function () { visible().forEach(function (a) { delete chosen[a.handle]; }); render(); };
+  $('btn-go').onclick = go;
+  load();
+})();
+</script>
+</body>
+</html>
